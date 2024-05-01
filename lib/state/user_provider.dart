@@ -1,12 +1,13 @@
 import 'package:flutter/material.dart';
+import '../models/user_model.dart';
 
-class UserProvider extends ChangeNotifier {
-  String _token = '';
+class UserProvider with ChangeNotifier {
+  UserModel? _user;
 
-  String get token => _token;
+  UserModel? get user => _user;
 
-  void setToken(String token) {
-    _token = token;
+  void setUser(UserModel user) {
+    _user = user;
     notifyListeners();
   }
 }
