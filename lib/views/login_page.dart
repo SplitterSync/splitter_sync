@@ -134,7 +134,7 @@ class _LoginPageState extends State<LoginPage> {
           Navigator.pushReplacement(
               context, MaterialPageRoute(builder: (_) => HomePage()));
         } else {
-          throw Exception('Login failed, no token received.');
+          throw Exception(response["message"]);
         }
       } catch (e) {
         if (!mounted) return; // Again, check if the widget is still in the tree
