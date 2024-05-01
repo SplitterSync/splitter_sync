@@ -1,9 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:splitter_sync/models/user_model.dart';
+import 'package:splitter_sync/services/authentication_service.dart';
+import 'package:shared_preferences/shared_preferences.dart';
+import 'package:splitter_sync/views/home/home_page.dart';
 import 'package:splitter_sync/views/login_page.dart';
 import '../state/user_provider.dart';
-import 'home_page.dart';
 
 class RegisterPage extends StatefulWidget {
   @override
@@ -15,16 +17,6 @@ class _RegisterPageState extends State<RegisterPage> {
   final _nameController = TextEditingController();
   final _emailController = TextEditingController();
   final _passwordController = TextEditingController();
-
-  void _register() {
-    if (_formKey.currentState!.validate()) {
-      // Perform login logic
-      Provider.of<UserProvider>(context, listen: false).setUser(
-          UserModel(name: _nameController.text, email: _emailController.text));
-      Navigator.pushReplacement(
-          context, MaterialPageRoute(builder: (_) => HomePage()));
-    }
-  }
 
   @override
   Widget build(BuildContext context) {
@@ -130,5 +122,41 @@ class _RegisterPageState extends State<RegisterPage> {
         ),
       ),
     );
+  }
+
+  void _register() async {
+    if (_formKey.currentState!.validate()) {
+      // Get ScaffoldMessengerState before starting async operation
+      final scaffoldMessenger = ScaffoldMessenger.of(context);
+
+      try {
+        final response = await ApiService.register(_nameController.text,
+            _emailController.text, _passwordController.text);
+
+        if (!mounted) return; // Check if the widget is still in the tree
+
+        if (response['token'] != null) {
+          SharedPreferences prefs = await SharedPreferences.getInstance();
+          await prefs.setString('token', response['token']);
+          Provider.of<UserProvider>(context, listen: false).setUser(UserModel(
+              name: _nameController.text,
+              // Using the name from the name controller
+              email: _emailController.text,
+              token: response['token']));
+          Navigator.pushReplacement(
+              context, MaterialPageRoute(builder: (_) => HomePage()));
+        } else {
+          throw Exception('Registration failed, no token received.');
+        }
+      } catch (e) {
+        if (!mounted) return; // Again, check if the widget is still in the tree
+
+        // Use predefined ScaffoldMessengerState to show SnackBar
+        scaffoldMessenger.showSnackBar(SnackBar(
+          content: Text(e.toString()),
+          backgroundColor: Colors.red,
+        ));
+      }
+    }
   }
 }

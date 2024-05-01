@@ -1,9 +1,12 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:splitter_sync/models/user_model.dart';
+import 'package:splitter_sync/services/authentication_service.dart';
+import 'package:shared_preferences/shared_preferences.dart';
+import 'package:splitter_sync/views/home/home_page.dart';
 import 'package:splitter_sync/views/register_page.dart';
 import '../state/user_provider.dart';
-import 'home_page.dart';
+
 
 class LoginPage extends StatefulWidget {
   @override
@@ -14,16 +17,6 @@ class _LoginPageState extends State<LoginPage> {
   final _formKey = GlobalKey<FormState>();
   final _emailController = TextEditingController();
   final _passwordController = TextEditingController();
-
-  void _login() {
-    if (_formKey.currentState!.validate()) {
-      // Perform login logic
-      Provider.of<UserProvider>(context, listen: false).setUser(
-          UserModel(name: _emailController.text, email: _emailController.text));
-      Navigator.pushReplacement(
-          context, MaterialPageRoute(builder: (_) => HomePage()));
-    }
-  }
 
   @override
   Widget build(BuildContext context) {
@@ -120,4 +113,40 @@ class _LoginPageState extends State<LoginPage> {
       ),
     );
   }
+
+  void _login() async {
+    if (_formKey.currentState!.validate()) {
+      try {
+        final response = await ApiService.login(
+            _emailController.text, _passwordController.text);
+
+        if (!mounted) return; // Check if the widget is still in the tree
+
+        if (response['token'] != null) {
+          SharedPreferences prefs = await SharedPreferences.getInstance();
+          await prefs.setString('token', response['token']);
+
+          Provider.of<UserProvider>(context, listen: false).setUser(UserModel(
+              name: 'User', // Assuming you don't have the user's name here; adjust as necessary
+              email: _emailController.text,
+              token: response['token']));
+
+          Navigator.pushReplacement(
+              context, MaterialPageRoute(builder: (_) => HomePage()));
+        } else {
+          throw Exception('Login failed, no token received.');
+        }
+      } catch (e) {
+        if (!mounted) return; // Again, check if the widget is still in the tree
+
+        ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text(e.toString()),
+              backgroundColor: Colors.red,
+            )
+        );
+      }
+    }
+  }
+
 }
